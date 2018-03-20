@@ -6,18 +6,18 @@
 
 long i, j, k, gs;
 
-int disk, halo, disk_odd, halo_odd, halo_n, equipartition, gaussian_bfield, clockwise_north, dynamo, idyn, cone;
+int disk, halo, disk_odd, halo_odd, halo_n, equipartition, gaussian_bfield, clockwise_north, dynamo, idyn, cone, cylinder, expanding_flow, suppress_halo_field, diffusion_dynamo;
 
 
 double x[207], y[207], z[207], y_ss[207][207][207], z_ss[207][207][207], 
-    x_ss[207][207], Q_0[207][207], Q_1[207][207], U_0[207][207], U_1[207][207], Q_2[207][207], 
+    x_ss[207][207], TP[207][207], PF[207][207], Q_0[207][207], Q_1[207][207], U_0[207][207], U_1[207][207], Q_2[207][207], 
     U_2[207][207], Q_3[207][207], 
     U_3[207][207], RM[207][207], RM_2[207][207], 
     psi_d[207][207][207], psi_h[207][207][207], delta_phi_1[207][207][207], 
     delta_phi_2[207][207][207], delta_phi_3[207][207][207], map[207][207], PI_1[207][207], PI_2[207][207],
-    E_x_d[207][207][207], E_y_d[207][207][207],
-    E_z_d[207][207][207],
-    E_x_h[207][207][207], E_y_h[207][207][207], E_z_h[207][207][207],
+    E_x_d[207][207][207], E_x_d_turb[207][207][207], E_y_d[207][207][207], E_y_d_turb[207][207][207],
+    E_z_d[207][207][207], E_z_d_turb[207][207][207],
+    E_x_h[207][207][207], E_x_h_turb[207][207][207], E_y_h[207][207][207], E_y_h_turb[207][207][207], E_z_h[207][207][207], E_z_h_turb[207][207][207],
     Et[207][207], delta_phi_o1[207][207], PI_0[207][207];
 
 double delta_x, delta_y, delta_z, E, E_phi, E_R, E_phi_h, E_phi_d, E_R_h, E_R_d,
@@ -25,11 +25,15 @@ double delta_x, delta_y, delta_z, E, E_phi, E_R, E_phi_h, E_phi_d, E_R_h, E_R_d,
     theta, phi, x_ref, y_ref, z_ref, ne, ne_0, h_e, 
     lambda_1, lambda_2, lambda_3, psi_1_d, psi_2_d, psi_3_d, psi_1_h, psi_2_h, psi_3_h, psi_obs_1, psi_obs_2, psi_obs_3, psi_obs_0, aniso_d, aniso_h, dyn_D, dyn_Q, b_odd_max, FWHM_d, sigma_d, d_fil, sigma_fil, h_cr, l_fil, r1, r2, ne_cone, ne_cone_0, h_cr_fil;
 
+double E_d_turb_0, E_h_turb_0, E_d_turb, E_h_turb, E_d_total_0, E_h_total_0, E_phi_h_prime, zeta, dynamo_scale;
+
+
 
 double PI, cell_x, cell_y, cell_z, D, h_B_d, h_B_h, FWHM_1, FWHM_2, alpha, beta,
     ia, iat, PA, PAt, pitch, sigma_1, sigma_2, sod, FWHM_e,
     sigma_e,
-    FWHM_b,sigma_b, pi_max, E_d, E_h, E_d0, E_h0, n_CR, FWHM_h, sigma_h;
+    FWHM_b,sigma_b, pi_max, E_d, E_h, E_d0, E_h0, n_CR, FWHM_h, sigma_h, scale_factor, c_constant, v_constant, E_phi_h_0;
+
 
 
 int main( void );
@@ -51,15 +55,15 @@ int main()
 
 //10 is the number for gs=200
 /* cell size in arcsec */
-    cell_x = 3.0;
-    cell_y = 3.0;
-    cell_z = 3.0;
+    cell_x = 2.0;
+    cell_y = 2.0;
+    cell_z = 2.0;
 
-    D = 3.94e6; //distance in pc
+    D = 26.9e6; //distance in pc
 
-    h_B_d = 1600.0; //scale height disk field
+    h_B_d = 1600.0; //scale height disk field in pc
     
-    h_B_h = 6800.0;//scale height halo field 4.0 * 1700.0;
+    h_B_h = 7000.0;//scale height halo field 4.0 * 1700.0;
 
 /* maximum of magnetic field in case of odd parity */
     
@@ -67,44 +71,44 @@ int main()
     
 /* scaleheight of the thermal electrons */    
         
-    h_e = 1400.0;// 1400.0 is from paper2, measured with halpha
+    h_e = 4000.0;// 1400.0 is from paper2, measured with halpha in pc
 
     
 /* electron density in cm^-3 */    
 
-    ne_0 = 0.05;
+    ne_0 = 0.01;
     
-    lambda_1 = 0.0637; // wavelength in meters
+    lambda_1 = 0.062; // wavelength in meters
 
-    lambda_2 = 0.0354; // wavelength in meters
+    lambda_2 = 0.036; // wavelength in meters
 
-    lambda_3 = 0.012; // wavelength in meters
+    lambda_3 = 0.02; // wavelength in meters
         
-    FWHM_1 = 6500.0; // in pc (gaussian, disk along the major axis, PaperII Fig 9 left)
+    FWHM_1 = 12000.0; // in pc (gaussian, disk along the major axis, PaperII Fig 9 left)
 
-    FWHM_2 = 13000.0; // in pc (gaussian, disk along the major axis)
+    FWHM_2 = 12000.0; // in pc (gaussian, disk along the major axis)
 
-    FWHM_h = 6500.0;// in pc (gaussian, halo along the major axis PaperII Fig 9 right)
+    FWHM_h = 12000.0;// in pc (gaussian, halo along the major axis PaperII Fig 9 right)
 
 /* FWHM of disk field in case of odd parity */    
 
     FWHM_d = 400; 
         
-    FWHM_e = 13000.0; // electron density
+    FWHM_e = 12000.0; // electron density
 
 /* if a vertical Gaussian magnetic field is used */     
 
     FWHM_b = 2000.0;
         
-    sod = 5.0; // free parameter:  FWHM_1/FWHM_2 disk
+    sod = 0.0; // free parameter:  FWHM_1/FWHM_2 disk
         
-/* disk =1: switch disk magnetic field on */
+/* disk = 1: switch disk magnetic field on */
 
-    disk = 1;
+    disk = -1;
     
 /* halo=1: switch halo magnetic field on */
 
-    halo = 1;
+    halo = -1;
     
 /* disk_odd = 1  on */ 
 
@@ -112,7 +116,7 @@ int main()
 
 /* halo_odd = 1: halo field is of odd parity */
 
-    halo_odd = 1;
+    halo_odd = -1;
 
 /* clockwise_north = 1: if disk field is odd: disk magnetic field points in clockwise direction in the northern hemisphere */    
 
@@ -121,12 +125,14 @@ int main()
 
 /*halo_n =1: halo mf points inward in northern hemisphere */    
 
-    halo_n = 1;
+    halo_n = -1;
     
 /* equipartition=1: switch equipartition on */
 
     equipartition= -1;
 
+    scale_factor = 1.e-5;
+    
 /* gaussian_bfield=1: switch Gaussian vertical bfield distribution on */
 
     gaussian_bfield = -1;
@@ -139,48 +145,101 @@ int main()
 
     dyn_Q = 0.0;//?
                     
-    alpha = 0.0 * PI / 180.0;// helical field
+    alpha = 25.0 * PI / 180.0;// helical field, phi-direction, 25 for n5775
 
-    beta = 45.0 * PI / 180.0 / 2.0;// helical field, beta_n = 45.0 * PI / 180.0;
+    beta = 40.0 * PI / 180.0;// helical field, beta_n = 45.0 * PI / 180.0, r-direction;
 
 /* pitch = pitch angle of the magnetic field spiral */
 
-    pitch = 25.0 * PI / 180.0;
+    pitch = -20.0 * PI / 180.0;
 
 /* inclination angle; ia = 90d means edge on */    
 
-    ia = 78.5;
+    ia = 84.0;
 
     iat = ( 90.0 - ia ) * PI / 180.0;
 
-    PA = 52.0;
+    PA = 145.0;
 
     PAt = ( 90.0 - PA ) * PI / 180.0;
 
-    E_d0 = 4.4;//4.4 is from paper2, ordered magnetic field strength disk
-    
-    E_h0 = 20.0;//20.0 for the filaments 4.4 is form paper2, ordered magnetic field strength halo
+    E_d_total_0 = 12.0;//Total disk field strength
 
-    aniso_d = 0.0;//0.68 is from paper2, anisotropical component
+    E_h_total_0 = 9.0;//Total halo field strength
+
+    E_d0 = 4.0;//4.4 is from paper2, ordered magnetic field strength disk
+
+    E_h0 = 4.0;//20.0 for the filaments 4.4 is form paper2, ordered magnetic field strength halo
+
+    E_d_turb_0 = sqrt( pow( E_d_total_0, 2.0 ) - pow( E_d0, 2.0 ) );//Turbulent magnetic field strength of the disk
+        
+    E_h_turb_0 = sqrt( pow( E_h_total_0, 2.0 ) - pow( E_h0, 2.0 ) );//Turbulent magnetic field strength of the halo
+
+    aniso_d = 1.0;//0.68 is from paper2, anisotropical component
     
     aniso_h = 1.0;//0.68 is from paper2
 
 /* conical magnetic field with filaments */
 
-    cone = 1;
+    cone = -1;
 
     d_fil = 40.0;//40.0
 
     l_fil = 300.0; //300.0
 
-    h_cr = 800.0;
+    h_cr = 3500.0;
 
     h_cr_fil = 200.0;
     
     ne_cone_0 = 2.0;//1.0
             
+/* halo field confined within a cylinder with a diameter of FWHM_h and has no radius dependence */
+    cylinder = -1;
+
+/* expanding flow, so that FWHM_h is a function of height */
+    expanding_flow = -1;
+
+/* Suppress the ordered halo field within the thin disc */
+    suppress_halo_field = -1;
     
 
+
+    if ( halo == -1 )
+    {
+
+        E_h0 = 0.0;
+        E_h_turb_0 = 0.0;
+        
+    }
+    
+    if ( disk == -1 )
+    {
+        E_h0 = 0.0;
+        E_h_turb_0 = 0.0;
+        E_d0 = 0.0;
+        E_d_turb_0 = 0.0;
+        
+    }
+    
+/* Dynamo model from Henriksen et al. (2018), Section 2.2 */
+
+    diffusion_dynamo = 1;
+    c_constant = 1.0;
+
+    if ( diffusion_dynamo == 1 )
+        E_h0 = c_constant;
+
+/* Rotation speed of the galaxy */    
+    v_constant = 0.25;
+
+/* This scales the intensities of the dynamo solution */    
+    dynamo_scale = 1.0;
+    c_constant = c_constant * dynamo_scale;
+//    v_constant = v_constant * dynamo_scale;
+
+/* This is another free parameter but should be set to zero usually */    
+    E_phi_h_0 = 0.0;    
+    
 /*************************************************************************************** Here ends the parameter input ***************/    
     
         
@@ -188,17 +247,21 @@ int main()
     setup_electric_field ();
 
 
+    writeimage ( "TP.fits", TP, 0.0, 0.0, 1.0 );
+    writeimage ( "PF.fits", PF, 0.0, 0.0, 1.0 );
     writeimage ( "Q0.fits", Q_0, 0.0, 0.0, 2.0 );
-    writeimage ( "Q1.fits", Q_1, 4.71e9, 5.0e8, 2.0 ); // Frequenz1,Bandbreite1,?
-    writeimage ( "Q2.fits", Q_2, 8.46e9, 5.0e8, 2.0 ); // Frequenz1,Bandbreite1,?
-    writeimage ( "Q3.fits", Q_3, 25.0e9, 5.0e8, 2.0 );
+    writeimage ( "Q1.fits", Q_1, 4.8e9, 1.0e7, 2.0 ); // Frequenz1,Bandbreite1,?
+    writeimage ( "Q2.fits", Q_2, 8.5e9, 1.0e7, 2.0 ); // Frequenz1,Bandbreite1,?
+    writeimage ( "Q3.fits", Q_3, 6.2e9, 5.0e8, 2.0 );
     writeimage ( "U0.fits", U_0, 0.0, 0.0, 3.0 );
-    writeimage ( "U1.fits", U_1, 4.71e9, 5.0e8, 3.0 );
-    writeimage ( "U2.fits", U_2, 8.46e9, 5.0e8, 3.0 );
-    writeimage ( "U3.fits", U_3, 25.0e9, 5.0e8, 3.0 );
-    writeimage ( "RM.fits", RM, 4.71e9, 5.0e8, 0.0 );
-    writeimage ( "RMs.fits", RM_2, 4.71e9, 5.0e8, 0.0 );
-
+    writeimage ( "U1.fits", U_1, 4.8e9, 1.0e7, 3.0 );
+    writeimage ( "U2.fits", U_2, 8.5e9, 1.0e7, 3.0 );
+    writeimage ( "U3.fits", U_3, 6.2e9, 5.0e8, 3.0 );
+    writeimage ( "RM.fits", RM, 4.8e9, 1.0e7, 0.0 );
+    writeimage ( "RMs.fits", RM_2, 4.8e9, 1.0e7, 0.0 );
+    writeimage ( "PI0.fits", PI_0, 0.0, 0.0, 1.0 );
+    writeimage ( "PI1.fits", PI_1, 4.8e9, 1.0e7, 1.0 );
+    writeimage ( "PI2.fits", PI_2, 8.5e9, 1.0e9, 1.0 );
 
     return(0);
 }
@@ -352,22 +415,25 @@ void setup_electric_field ( void )
 
             {
 
-	      if (gaussian_bfield == 1) // scheibenfeldstaerke A4
+                if ( disk == 1 )
+                {
+                    
+                    if (gaussian_bfield == 1) // scheibenfeldstaerke A4
 
-                    E_d = E_d0 * exp (-pow( z_ss[i][j][k], 2.0 )  /
-                                   (2.0 * pow(sigma_b, 2.0) ) ) *
-                        ( exp( -(pow( x_ss[i][k], 2.0 ) +
-                                 pow( y_ss[i][j][k], 2.0 ) ) / 
-                             ( 2.0 * pow( sigma_1, 2.0) ) ) + sod *
-                          exp( -(pow( x_ss[i][k], 2.0 ) +
-                                 pow( y_ss[i][j][k], 2.0 ) ) / 
-                               ( 2.0 * pow( sigma_2, 2.0) ) ) ) /
+                        E_d = E_d0 * exp (-pow( z_ss[i][j][k], 2.0 )  /
+                                          (2.0 * pow(sigma_b, 2.0) ) ) *
+                            ( exp( -(pow( x_ss[i][k], 2.0 ) +
+                                     pow( y_ss[i][j][k], 2.0 ) ) / 
+                                   ( 2.0 * pow( sigma_1, 2.0) ) ) + sod *
+                              exp( -(pow( x_ss[i][k], 2.0 ) +
+                                     pow( y_ss[i][j][k], 2.0 ) ) / 
+                                   ( 2.0 * pow( sigma_2, 2.0) ) ) ) /
                         (1.0 + sod);
-                
-                else if (disk_odd == 1)
-
-                    E_d = E_d0 * fabs( z_ss[i][j][k] ) / b_odd_max *
-                        exp ( 1.0 - fabs ( z_ss[i][j][k] ) / b_odd_max );
+                    
+                    else if (disk_odd == 1)
+                        
+                        E_d = E_d0 * fabs( z_ss[i][j][k] ) / b_odd_max *
+                            exp ( 1.0 - fabs ( z_ss[i][j][k] ) / b_odd_max );
                 
                     
 
@@ -385,37 +451,104 @@ void setup_electric_field ( void )
                    
                 
 
+                    else
+
+                    {
+                    
+                        E_d = E_d0 * exp (-sqrt( pow( z_ss[i][j][k], 2.0 ) ) /
+                                          h_B_d) * 
+                            ( exp(-pow( sqrt( pow( x_ss[i][k], 2.0 ) + 
+                                              pow( y_ss[i][j][k], 2.0 ) ), 2.0 ) / 
+                                  ( 2.0 * pow( sigma_1, 2.0) ) ) + sod *
+                              exp(-pow( sqrt( pow( x_ss[i][k], 2.0 ) + 
+                                              pow( y_ss[i][j][k], 2.0 ) ), 2.0 ) / 
+                                  ( 2.0 * pow( sigma_2, 2.0) ) ) ) /
+                            (1.0 + sod);
+                        
+                        E_d_turb = E_d_turb_0 * exp (-sqrt( pow( z_ss[i][j][k], 2.0 ) ) /
+                                                 h_B_d) * 
+                            ( exp(-pow( sqrt( pow( x_ss[i][k], 2.0 ) + 
+                                              pow( y_ss[i][j][k], 2.0 ) ), 2.0 ) / 
+                                  ( 2.0 * pow( sigma_1, 2.0) ) ) + sod *
+                              exp(-pow( sqrt( pow( x_ss[i][k], 2.0 ) + 
+                                              pow( y_ss[i][j][k], 2.0 ) ), 2.0 ) / 
+                                  ( 2.0 * pow( sigma_2, 2.0) ) ) ) /
+                            (1.0 + sod);
+
+
+                    }
+                }
+
                 else
-                                      
-                    E_d = E_d0 * exp (-sqrt( pow( z_ss[i][j][k], 2.0 ) ) /
-                                      h_B_d) * 
-                        ( exp(-pow( sqrt( pow( x_ss[i][k], 2.0 ) + 
-                                          pow( y_ss[i][j][k], 2.0 ) ), 2.0 ) / 
-                              ( 2.0 * pow( sigma_1, 2.0) ) ) + sod *
-                          exp(-pow( sqrt( pow( x_ss[i][k], 2.0 ) + 
-                                          pow( y_ss[i][j][k], 2.0 ) ), 2.0 ) / 
-                              ( 2.0 * pow( sigma_2, 2.0) ) ) ) /
-                        (1.0 + sod);
+
+                {
+                    E_d = 0.0;
+                    E_d_turb = 0.0;
+                    
+                }
+                
+                    
+          
 
                
 		
                 if ( halo == 1 )
+                {
+                    if ( cylinder == 1 )
+                    {
+                        
+                        if ( sqrt( pow( x_ss[i][k], 2.0 ) + pow( y_ss[i][j][k], 2.0 ) ) <= FWHM_h / 2.0 )
+                            E_h = E_h0 * exp (-sqrt( pow( z_ss[i][j][k], 2.0 ) ) /
+                                              h_B_h);
+                        else
+                            E_h = 0.0;
+
+                        
+                    }
+
+                    else
+
+                    {
+                        
+                        if ( expanding_flow == 1 )
+                            sigma_h = FWHM_h / ( 2.0 * sqrt( 2.0 * log (2.0) ) ) * ( sqrt( pow( z_ss[i][j][k], 2.0 ) ) * tan( beta ) + FWHM_h / 2.0) / FWHM_h * 2.0;
+                    
+                        E_h = E_h0 * exp (-sqrt( pow( z_ss[i][j][k], 2.0 ) ) /
+                                          h_B_h ) *
+                            exp(-pow( sqrt( pow( x_ss[i][k], 2.0 ) + 
+                                            pow( y_ss[i][j][k], 2.0 ) ), 2.0 ) / 
+                                ( 2.0 * pow( sigma_h, 2.0) ) );
+
+                        if ( suppress_halo_field == 1 )
+                            if ( sqrt( pow( z_ss[i][j][k], 2.0 ) ) <=  h_B_d ) 
+                                E_h = E_h0 * sqrt( pow( z_ss[i][j][k], 2.0 ) ) /
+                                    h_B_d *
+                                    exp(-pow( sqrt( pow( x_ss[i][k], 2.0 ) + 
+                                                    pow( y_ss[i][j][k], 2.0 ) ), 2.0 ) / 
+                                        ( 2.0 * pow( sigma_h, 2.0) ) );
+                            
+
+                        E_h_turb = E_h_turb_0 * exp (-sqrt( pow( z_ss[i][j][k], 2.0 ) ) /
+                                          h_B_h) *
+                            exp(-pow( sqrt( pow( x_ss[i][k], 2.0 ) + 
+                                            pow( y_ss[i][j][k], 2.0 ) ), 2.0 ) / 
+                                ( 2.0 * pow( sigma_h, 2.0) ) );
+                    }
+                    
+
+                }
+
                 
-                    E_h = E_h0 * exp (-sqrt( pow( z_ss[i][j][k], 2.0 ) ) /
-                                      h_B_h) *
-                        exp(-pow( sqrt( pow( x_ss[i][k], 2.0 ) + 
-                                        pow( y_ss[i][j][k], 2.0 ) ), 2.0 ) / 
-                            ( 2.0 * pow( sigma_h, 2.0) ) );
 
 
-                if ( dynamo == 1 )
+                else if ( dynamo == 1 )
                 
                     E_h = E_h0 * exp ( - sqrt ( x_ss[i][k] * x_ss[i][k] +
                                                 y_ss[i][j][k] * y_ss[i][j][k] +
                                                 z_ss[i][j][k] * z_ss[i][j][k] )
                                        / h_B_h);
 
-                if ( cone == 1 )
+                else if ( cone == 1 )
 
                 {
                     
@@ -536,8 +669,11 @@ void setup_electric_field ( void )
                     
                 }
 
+                
+                    
 
-                if ( dynamo == 1 )
+
+                else if ( dynamo == 1 )
 
                 {
                     
@@ -573,10 +709,59 @@ void setup_electric_field ( void )
                         E_zs_h = - E_zs_h;
                         
                     }
-                    
 
 
                 }
+
+                else if ( diffusion_dynamo == 1)
+
+                {
+
+//                    zeta = z_ss[i][j][k] / sqrt( pow( x_ss[i][k], 2.0 ) + pow( y_ss[i][j][k], 2.0 ) +
+//                                                 pow( z_ss[i][j][k], 2.0 ) );
+
+                    zeta = z_ss[i][j][k] / sqrt( pow( x_ss[i][k], 2.0 ) + pow( y_ss[i][j][k], 2.0 )  );
+
+/*                     if ( fabs( zeta ) > 1.0 ) */
+/*                     { */
+                        
+/*                         zeta = 1.0 * zeta / fabs( zeta ); */
+/* //                        printf("zeta = %g\n", zeta); */
+
+/*                     } */
+                    
+                                        
+                    E_phi_h = E_phi_h_0 + c_constant * asinh ( zeta );
+                                                                
+                    E_phi_h_prime = c_constant / sqrt( 1.0 + pow( zeta, 2.0 ) );
+                        
+                    E_R_h = zeta * E_phi_h_prime / v_constant;
+                        
+                    E_zs_h = E_phi_h_prime / v_constant;
+
+                    /* if ( sqrt( pow( x_ss[i][k], 2.0 ) + pow( y_ss[i][j][k], 2.0 ) ) < 2000.0  ) */
+                    /*     { */
+                    /*         E_phi_h = 0.0; */
+                    /*         E_R_h = 0.0; */
+                    /*         E_zs_h = 0.0; */
+                            
+                    /*     } */
+                        
+                        
+
+                }
+
+                else
+
+                {
+                    E_zs_h = 0.0;
+
+                    E_phi_h = 0.0;
+
+                    E_R_h = 0.0;
+                    
+                }
+ 
                 
 
 
@@ -590,13 +775,13 @@ void setup_electric_field ( void )
                     {
 			
                         if ( ( z_ss[i][j][k] ) >=0 ) 
-
+                            
                         {
 			
                             E_phi_d = E_d / sqrt( 1.0 + pow( tan( pitch ), 2 ) );
                 
                         }
-			
+                        
                         else
                 
                         {
@@ -606,30 +791,42 @@ void setup_electric_field ( void )
                         }
 
                     }
-
+                    
                     else
                 
                     {
 
                         E_phi_d = E_d / sqrt( 1.0 + pow( tan( pitch ), 2 ) );
 
-                   }
+                    }
 
                    
                     E_R_d = - tan( pitch ) * E_phi_d;
+
+                    if ( clockwise_north == 1 )
+
+                    {
+                    
+                        E_phi_d = -E_phi_d;
+
+                        E_R_d = -E_R_d;
+                        
+                    }
                     
                 }
 
-                
-                if ( clockwise_north == 1 )
+                else
 
                 {
-                    
-                    E_phi_d = -E_phi_d;
+                    E_phi_d = 0.0;
 
-                    E_R_d = -E_R_d;
-                        
+                    E_R_d = 0.0;
+                                        
                 }
+                
+
+
+                    
  
 
                 
@@ -649,6 +846,12 @@ void setup_electric_field ( void )
                 E_z_d[i][j][k] = -sin( PAt ) * E_xs_d - sin( iat ) *
                     cos( PAt ) * E_ys_d + cos( iat ) * cos( PAt ) * E_zs_d;
 
+                E_x_d_turb[i][j][k] = sqrt(1./3.) * E_d_turb;
+
+                E_y_d_turb[i][j][k] = sqrt(1./3.) * E_d_turb;
+                
+                E_z_d_turb[i][j][k] = sqrt(1./3.) * E_d_turb;
+
 
                 
                 E_xs_h = E_R_h * cos( phi ) - E_phi_h * sin( phi );
@@ -662,6 +865,12 @@ void setup_electric_field ( void )
                 
                 E_z_h[i][j][k] = -sin( PAt ) * E_xs_h - sin( iat ) *
                     cos( PAt ) * E_ys_h + cos( iat ) * cos( PAt ) * E_zs_h;
+
+                E_x_h_turb[i][j][k] = sqrt(1./3.) * E_h_turb;
+
+                E_y_h_turb[i][j][k] = sqrt(1./3.) * E_h_turb;
+                
+                E_z_h_turb[i][j][k] = sqrt(1./3.) * E_h_turb;
 
                
                 psi_d[i][j][k] = atan2(-E_x_d[i][j][k], E_z_d[i][j][k]) -
@@ -721,7 +930,10 @@ void setup_electric_field ( void )
         for (k=1; k <= gs; k++)
 	    
         {
+            
 
+            TP[i][k] = 0.0;
+            
             Q_0[i][k] = 0.0;
 	    
             U_0[i][k] = 0.0;
@@ -767,8 +979,14 @@ void setup_electric_field ( void )
                              pow( E_z_d[i][j][k], 2.0 ) +
                              pow( E_x_h[i][j][k], 2.0 ) +
                              pow( E_y_h[i][j][k], 2.0 ) +
-                             pow( E_z_h[i][j][k], 2.0 ) ) /
-                         pow(E_d0 + E_h0, 2.0);
+                             pow( E_z_h[i][j][k], 2.0 ) +
+                             pow( E_x_d_turb[i][j][k], 2.0 ) +
+                             pow( E_y_d_turb[i][j][k], 2.0 ) +
+                             pow( E_z_d_turb[i][j][k], 2.0 ) +
+                             pow( E_x_h_turb[i][j][k], 2.0 ) +
+                             pow( E_y_h_turb[i][j][k], 2.0 ) +
+                             pow( E_z_h_turb[i][j][k], 2.0 ) ) /
+                         pow(E_d0 + E_h0 + E_d_turb_0 + E_h_turb_0, 2.0);
 
                  else if ( cone == 1 )
 
@@ -828,7 +1046,20 @@ void setup_electric_field ( void )
                          (1.0 + sod);
                  
 
-                Q_0[i][k]= Q_0[i][k] + n_CR *
+
+
+                 TP[i][k]= TP[i][k] + n_CR *
+                     ( pow( E_x_d[i][j][k], 2.0) +
+                       pow( E_z_d[i][j][k], 2.0) +
+                       pow( E_x_d_turb[i][j][k], 2.0) +
+                       pow( E_z_d_turb[i][j][k], 2.0) +
+                       pow( E_x_h[i][j][k], 2.0) +
+                       pow( E_z_h[i][j][k], 2.0) +
+                       pow( E_x_h_turb[i][j][k], 2.0) +
+                       pow( E_z_h_turb[i][j][k], 2.0) );
+
+
+                 Q_0[i][k]= Q_0[i][k] + n_CR *
                     ( ( pow( E_x_d[i][j][k], 2.0) +
                         pow( E_z_d[i][j][k], 2.0) ) *
                       cos(2.0 * psi_d[i][j][k]) +
@@ -836,15 +1067,14 @@ void setup_electric_field ( void )
                         pow( E_z_h[i][j][k], 2.0) ) *
                       cos(2.0 * psi_h[i][j][k]) );
 
-                U_0[i][k]= U_0[i][k] + n_CR *
-                    ( ( pow( E_x_d[i][j][k], 2.0) +
-                        pow( E_z_d[i][j][k], 2.0) ) *
+                 U_0[i][k]= U_0[i][k] + n_CR *
+                     ( ( pow( E_x_d[i][j][k], 2.0) +
+                         pow( E_z_d[i][j][k], 2.0) ) *
                       sin(2.0 * psi_d[i][j][k]) +
-                      ( pow( E_x_h[i][j][k], 2.0) +
+                       ( pow( E_x_h[i][j][k], 2.0) +
                         pow( E_z_h[i][j][k], 2.0) ) *
                       sin(2.0 * psi_h[i][j][k]) );
 
- 
                 Q_1[i][k]= Q_1[i][k] + n_CR *
                     ( ( pow( E_x_d[i][j][k], 2.0) +
                         pow( E_z_d[i][j][k], 2.0) ) *
@@ -904,7 +1134,7 @@ void setup_electric_field ( void )
                      pow( E_y_h[i][j][k], 2.0 ) + pow( E_z_h[i][j][k], 2.0 ) );
 
                 
-                RM[i][k] = 2.0 * psi_1_h;
+//                RM[i][k] = 2.0 * psi_1_h;
                 
                 
                     
@@ -927,6 +1157,7 @@ void setup_electric_field ( void )
         {
 
             PI_0[i][k] = sqrt( pow( Q_0[i][k], 2.0) + pow( U_0[i][k], 2.0) );
+            
 
             if (pi_max < PI_0[i][k])
 
@@ -970,10 +1201,22 @@ void setup_electric_field ( void )
 
             psi_obs_2 = 0.5 * atan2( U_2[i][k], Q_2[i][k] );
 
+
+            if ( (psi_obs_1 - psi_obs_2) > PI / 2.0 ) 
+                RM[i][k] = (psi_obs_1 - psi_obs_2 - PI) / ( pow( 0.062, 2.0 ) - pow( 0.036, 2.0 ) );
+            else if ( (psi_obs_1 - psi_obs_2) < -PI / 2.0 )
+                RM[i][k] = (psi_obs_1 - psi_obs_2 + PI) / ( pow( 0.062, 2.0 ) - pow( 0.036, 2.0 ) );
+            else
+                RM[i][k] = (psi_obs_1 - psi_obs_2) / ( pow( 0.062, 2.0 ) - pow( 0.036, 2.0 ) );
+
+//            RM[i][k] = psi_obs_2;
+            
             
             PI_1[i][k] = sqrt( pow( Q_1[i][k], 2.0) + pow( U_1[i][k], 2.0) );
             
             PI_2[i][k] = sqrt( pow( Q_2[i][k], 2.0) + pow( U_2[i][k], 2.0) );
+
+            PF[i][k] = sqrt( pow( Q_0[i][k], 2.0) + pow( U_0[i][k], 2.0) ) / TP[i][k];
             
 
 
@@ -991,21 +1234,25 @@ void setup_electric_field ( void )
 	    
         {
 
-            Q_0[i][k] = 1.0e-6 * Q_0[i][k];
+            TP[i][k] = scale_factor * TP[i][k];
+
+            PI_0[i][k] = scale_factor * PI_0[i][k];
+            
+            Q_0[i][k] = scale_factor * Q_0[i][k];
 	    
-            U_0[i][k] = 1.0e-6 * U_0[i][k];
+            U_0[i][k] = scale_factor * U_0[i][k];
 	    
-            Q_1[i][k] = 1.0e-6 * Q_1[i][k];
+            Q_1[i][k] = scale_factor * Q_1[i][k];
 
-            U_1[i][k] = 1.0e-6 * U_1[i][k];
+            U_1[i][k] = scale_factor * U_1[i][k];
 	    
-            Q_2[i][k] = 1.0e-6 * Q_2[i][k];
+            Q_2[i][k] = scale_factor * Q_2[i][k];
 
-            U_2[i][k] = 1.0e-6 * U_2[i][k];
+            U_2[i][k] = scale_factor * U_2[i][k];
 
-            Q_3[i][k] = 1.0e-6 * Q_3[i][k];
+            Q_3[i][k] = scale_factor * Q_3[i][k];
 
-            U_3[i][k] = 1.0e-6 * U_3[i][k];
+            U_3[i][k] = scale_factor * U_3[i][k];
 
 
         }
@@ -1093,7 +1340,7 @@ void writeimage(char filename[], double map[207][207], double crval3, double cde
 			 "number of data axis", &status) )
 			 printerror( status ); */
 
-    if ( fits_update_key(fptr, TSTRING, "OBJECT", "NGC 253", "Source name",
+    if ( fits_update_key(fptr, TSTRING, "OBJECT", "NGC 5775", "Source name",
 			 &status) )
          printerror( status );
 
@@ -1124,12 +1371,12 @@ void writeimage(char filename[], double map[207][207], double crval3, double cde
 			 "IEEE not-a-number for blanked pixels", &status) )
          printerror( status );
 
-    obsra = 1.18870383535e1;
+    obsra = 223.489988;
     if ( fits_update_key(fptr, TDOUBLE, "OBSRA", &obsra, "Antenna pointing RA",
 			 &status) )
          printerror( status );
 
-    obsdec = -2.52886438077e1;
+    obsdec = 3.544458;
     if ( fits_update_key(fptr, TDOUBLE, "OBSDEC", &obsdec,
 			 "Antenna pointing DEC", &status) )
 	printerror( status );
@@ -1139,7 +1386,7 @@ void writeimage(char filename[], double map[207][207], double crval3, double cde
 			 &status) )
          printerror( status );
 
-    crval1 =  1.18880416667e1;
+    crval1 =  223.489988;
     if ( fits_update_key(fptr, TDOUBLE, "CRVAL1", &crval1, NULL,
 			 &status) )
          printerror( status );
@@ -1163,7 +1410,7 @@ void writeimage(char filename[], double map[207][207], double crval3, double cde
 			 &status) )
          printerror( status );
 
-    crval2 =  -2.52882777778e1;
+    crval2 =  3.544458;
     if ( fits_update_key(fptr, TDOUBLE, "CRVAL2", &crval2, NULL,
 			 &status) )
          printerror( status );
